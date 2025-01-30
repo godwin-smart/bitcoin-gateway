@@ -68,3 +68,43 @@
 (define-data-var bridge-paused bool false)
 (define-data-var total-bridged-amount uint u0)
 (define-data-var last-processed-height uint u0)
+
+;; Data Maps
+
+(define-map deposits 
+    { tx-hash: (buff 32) }
+    {
+        amount: uint,
+        recipient: principal,
+        processed: bool,
+        confirmations: uint,
+        timestamp: uint,
+        btc-sender: (buff 33)
+    }
+)
+
+(define-map validators principal bool)
+(define-map validator-signatures
+    { tx-hash: (buff 32), validator: principal }
+    { signature: (buff 65), timestamp: uint }
+)
+
+(define-map bridge-balances principal uint)
+
+;; Read-Only Functions
+
+(define-read-only (get-deposit (tx-hash (buff 32)))
+    (map-get? deposits {tx-hash: tx-hash})
+)
+
+(define-read-only (get-bridge-status)
+    (var-get bridge-paused)
+)
+
+(define-read-only (get-validator-status (validator principal))
+    (default-to false (map-get? validators validator))
+)
+
+(define-read-only (get-balance (user principal))
+    (default-to u0 (map-get? bridge-balances user))
+)
