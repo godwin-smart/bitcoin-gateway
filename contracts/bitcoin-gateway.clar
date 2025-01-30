@@ -108,3 +108,67 @@
 (define-read-only (get-balance (user principal))
     (default-to u0 (map-get? bridge-balances user))
 )
+
+(define-read-only (verify-signature (tx-hash (buff 32)) (validator principal) (signature (buff 65)))
+    (let (
+        (stored-sig (map-get? validator-signatures {tx-hash: tx-hash, validator: validator}))
+    )
+        (and 
+            (is-some stored-sig)
+            (is-eq signature (get signature (unwrap-panic stored-sig)))
+        )
+    )
+)
+
+;; Private Functions
+
+(define-private (is-valid-principal (address principal))
+    (and 
+        (is-ok (principal-destruct? address))
+        (not (is-eq address CONTRACT-OWNER))
+        (not (is-eq address (as-contract tx-sender)))
+    )
+)
+
+(define-private (is-valid-btc-address (btc-addr (buff 33)))
+    (and
+        (is-eq (len btc-addr) u33)
+        (not (is-eq btc-addr 0x000000000000000000000000000000000000000000000000000000000000000000))
+        true
+    )
+)
+
+(define-private (is-valid-tx-hash (tx-hash (buff 32)))
+    (and
+        (is-eq (len tx-hash) u32)
+        (not (is-eq tx-hash 0x0000000000000000000000000000000000000000000000000000000000000000))
+        true
+    )
+)
+
+(define-private (is-valid-signature (signature (buff 65)))
+    (and
+        (is-eq (len signature) u65)
+        (not (is-eq signature 0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000))
+        true
+    )
+)
+
+(define-private (validate-deposit-amount (amount uint))
+    (and 
+        (>= amount MIN-DEPOSIT-AMOUNT)
+        (<= amount MAX-DEPOSIT-AMOUNT)
+    )
+)
+
+(define-private (update-deposit-confirmations (tx-hash (buff 32)) (new-confirmations uint))
+    (let (
+        (deposit (unwrap! (map-get? deposits {tx-hash: tx-hash}) ERR-INVALID-BRIDGE-STATUS))
+    )
+        (map-set deposits
+            {tx-hash: tx-hash}
+            (merge deposit {confirmations: new-confirmations})
+        )
+        (ok true)
+    )
+)
